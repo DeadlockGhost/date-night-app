@@ -9,21 +9,22 @@ import {
   X, RefreshCw, AtSign
 } from 'lucide-react';
 
+// ✅ Your Web3Forms key (safe to expose in frontend)
+const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY || '01553af3-463b-4ae8-8a42-22646d9a5c50';
+const MY_EMAIL = import.meta.env.VITE_MY_EMAIL || 's81547984@gmail.com';
+
 export default function App() {
   const [stage, setStage] = useState('question');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [noCount, setNoCount] = useState(0);
   const [noPos, setNoPos] = useState({ x: 0, y: 0 });
 
-  // ✅ Email config from .env — YOUR Gmail is the target
   const [emailConfig, setEmailConfig] = useState({
-    serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_rko4ps5',
-    templateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_omgatnt',
-    publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'NX-Wsvy5mHjV8QoL6',
-    targetEmail: import.meta.env.VITE_MY_EMAIL || 's81547984@gmail.com',
+    accessKey: WEB3FORMS_KEY,
+    targetEmail: MY_EMAIL,
   });
 
-  // ✅ HER email — asked in the booking form
+  // ✅ HER email — auto-asked
   const [herEmail, setHerEmail] = useState('');
 
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -178,7 +179,7 @@ export default function App() {
     );
   };
 
-  // Compile summary
+  // Compile summary for YOU (the boyfriend)
   const getCompiledLoveData = () => {
     const selectedActs = activities
       .filter((a) => a.checked)
@@ -194,8 +195,7 @@ export default function App() {
       `==========================================\n` +
       `TO: My Handsome Boyfriend 🤴❤️\n` +
       `FROM: Your Darling 👸✨\n` +
-      (herEmail ? `📧 DARLING'S EMAIL: ${herEmail}\n` : '') +
-      `\n` +
+      `📧 HER EMAIL: ${herEmail}\n\n` +
       `📅 DATE: Tomorrow Night!\n` +
       `⏰ TIME SLOT: ${timeSlot}\n` +
       `👗 DRESS CODE: ${dressCode}\n` +
@@ -210,7 +210,7 @@ export default function App() {
       `Status: Confirmed, Non-Refundable & Awaiting Romance! 🥰💋`;
   };
 
-  // Auto-reply message she receives
+  // Compile auto-reply for HER
   const getAutoReplyData = () => {
     const selectedActs = activities
       .filter((a) => a.checked)
@@ -242,7 +242,7 @@ export default function App() {
       `— Your Boyfriend 🤴❤️`;
   };
 
-  // ✅ MAIN SUBMIT — sends to BOTH you and her
+  // ✅ SILENT AUTO-SEND — no popups, no logins
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     playTone('yes');
@@ -259,120 +259,64 @@ export default function App() {
     const summaryForMe = getCompiledLoveData();
     const summaryForHer = getAutoReplyData();
 
-    // 1️⃣ Send to YOUR Gmail (the booking notification)
-    const emailDataToMe = {
-      service_id: emailConfig.serviceId,
-      template_id: emailConfig.templateId,
-      user_id: emailConfig.publicKey,
-      template_params: {
-        to_email: emailConfig.targetEmail,
-        reply_to: herEmail,
-        lover_name: 'Darling 👸',
-        her_email: herEmail,
-        date_time: timeSlot,
-        dress_code: dressCode,
-        food_plan: foodPlan,
-        cravings: cravings.join(', '),
-        activities: activities.filter((a) => a.checked).map((a) => `${a.emoji} ${a.title}`).join(', '),
-        excitement_level: `${excitement.toLocaleString()}%`,
-        secret_note: secretNote || 'None! Just bring yourself and hugs 💕',
-        full_summary: summaryForMe,
-        message: summaryForMe,
-      },
-    };
-
-    // 2️⃣ Send auto-reply to HER email
-    const emailDataToHer = {
-      service_id: emailConfig.serviceId,
-      template_id: emailConfig.templateId,
-      user_id: emailConfig.publicKey,
-      template_params: {
-        to_email: herEmail,
-        reply_to: emailConfig.targetEmail,
-        lover_name: 'Your Boyfriend 🤴',
-        her_email: herEmail,
-        date_time: timeSlot,
-        dress_code: dressCode,
-        food_plan: foodPlan,
-        cravings: cravings.join(', '),
-        activities: activities.filter((a) => a.checked).map((a) => `${a.emoji} ${a.title}`).join(', '),
-        excitement_level: `${excitement.toLocaleString()}%`,
-        secret_note: secretNote || 'None! Just bring yourself and hugs 💕',
-        full_summary: summaryForHer,
-        message: summaryForHer,
-      },
-    };
-
     try {
-      // Send both in parallel
-      const [resMe, resHer] = await Promise.all([
-        fetch('https://api.emailjs.com/api/v1.0/email/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(emailDataToMe),
-        }),
-        fetch('https://api.emailjs.com/api/v1.0/email/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(emailDataToHer),
-        }),
-      ]);
+      // 1️⃣ Send to YOU — silently
+      const formDataMe = new FormData();
+      formDataMe.append('access_key', emailConfig.accessKey);
+      formDataMe.append('subject', `💖 Date Night Booking from ${herEmail}`);
+      formDataMe.append('from_name', 'Darling 👸');
+      formDataMe.append('replyto', herEmail);
+      formDataMe.append('to', emailConfig.targetEmail);
+      formDataMe.append('name', 'Darling 👸');
+      formDataMe.append('email', herEmail);
+      formDataMe.append('message', summaryForMe);
 
-      if (resMe.ok && resHer.ok) {
-        setIsSending(false);
-        triggerConfetti();
-        setStage('confirmed');
-        setEmailStatusMsg(`✅ Booking sent to ${emailConfig.targetEmail} & auto-reply sent to ${herEmail}! 💌`);
-      } else if (resMe.ok) {
-        setIsSending(false);
-        triggerConfetti();
-        setStage('confirmed');
-        setEmailStatusMsg(`✅ Booking sent to ${emailConfig.targetEmail}! Auto-reply to ${herEmail} may have failed.`);
-      } else {
-        // Fallback — open Gmail with the summary
-        const subject = encodeURIComponent('💖 Date Night Booking from Your Darling! 💌');
-        const body = encodeURIComponent(summaryForMe);
-        window.open(
-          `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailConfig.targetEmail)}&su=${subject}&body=${body}`,
-          '_blank'
-        );
-        setIsSending(false);
-        triggerConfetti();
-        setStage('confirmed');
-        setEmailStatusMsg(`⚠️ EmailJS failed — Gmail opened as backup. Please send manually!`);
-      }
-    } catch (err) {
-      console.error(err);
-      const subject = encodeURIComponent('💖 Date Night Booking from Your Darling! 💌');
-      const body = encodeURIComponent(summaryForMe);
-      window.open(
-        `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailConfig.targetEmail)}&su=${subject}&body=${body}`,
-        '_blank'
-      );
+      const resMe = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formDataMe,
+      });
+
+      const dataMe = await resMe.json();
+
+      // 2️⃣ Send auto-reply to HER — silently
+      const formDataHer = new FormData();
+      formDataHer.append('access_key', emailConfig.accessKey);
+      formDataHer.append('subject', '💖 Your Date Night Booking is Confirmed!');
+      formDataHer.append('from_name', 'Your Boyfriend 🤴');
+      formDataHer.append('replyto', emailConfig.targetEmail);
+      formDataHer.append('to', herEmail);
+      formDataHer.append('name', 'Your Boyfriend 🤴');
+      formDataHer.append('email', emailConfig.targetEmail);
+      formDataHer.append('message', summaryForHer);
+
+      const resHer = await fetch('https://api.web3forms.com/submit', {
+        method: 'POST',
+        body: formDataHer,
+      });
+
+      const dataHer = await resHer.json();
+
       setIsSending(false);
       triggerConfetti();
       setStage('confirmed');
-      setEmailStatusMsg(`⚠️ Network error — Gmail opened as backup.`);
+
+      if (dataMe.success && dataHer.success) {
+        setEmailStatusMsg(`✅ Booking sent to boyfriend & auto-reply sent to ${herEmail}! 💌`);
+      } else if (dataMe.success) {
+        setEmailStatusMsg(`✅ Booking sent to ${emailConfig.targetEmail}! Her confirmation may take a moment.`);
+      } else {
+        setEmailStatusMsg(`⚠️ Email issue: ${dataMe.message || 'Check your Web3Forms key'}`);
+      }
+    } catch (err) {
+      console.error('Email send error:', err);
+      setIsSending(false);
+      triggerConfetti();
+      setStage('confirmed');
+      setEmailStatusMsg('⚠️ Network error. Please check your connection and try again.');
     }
   };
 
-  const openDirectGmail = () => {
-    playTone('click');
-    const subject = encodeURIComponent('💖 Date Night Booking from Your Darling! 💌');
-    const body = encodeURIComponent(getCompiledLoveData());
-    window.open(
-      `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailConfig.targetEmail)}&su=${subject}&body=${body}`,
-      '_blank'
-    );
-  };
-
-  const openNativeMail = () => {
-    playTone('click');
-    const subject = encodeURIComponent('💖 Date Night Booking from Your Darling!');
-    const body = encodeURIComponent(getCompiledLoveData());
-    window.location.href = `mailto:${emailConfig.targetEmail}?subject=${subject}&body=${body}`;
-  };
-
+  // Copy summary to clipboard
   const copyLoveSummary = () => {
     playTone('click');
     const text = getCompiledLoveData();
@@ -393,6 +337,14 @@ export default function App() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
+  };
+
+  // Native mail (backup — opens mail app)
+  const openNativeMail = () => {
+    playTone('click');
+    const subject = encodeURIComponent('💖 Date Night Booking from Your Darling!');
+    const body = encodeURIComponent(getCompiledLoveData());
+    window.location.href = `mailto:${emailConfig.targetEmail}?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -449,23 +401,22 @@ export default function App() {
             <div className="flex items-center justify-between pb-3 border-b border-rose-100">
               <div className="flex items-center gap-2 font-bold text-rose-700">
                 <Mail className="w-5 h-5 text-rose-500" />
-                <span className="text-sm">EmailJS Setup</span>
+                <span className="text-sm">Web3Forms Setup</span>
               </div>
               <button onClick={() => setShowConfigModal(false)} className="p-1 text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <ol className="list-decimal pl-5 space-y-1 my-3 text-slate-600 text-[11px] sm:text-xs">
-              <li>Sign up free at <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" className="text-rose-600 font-bold underline">EmailJS.com</a></li>
-              <li>Add Gmail service → copy <strong>Service ID</strong></li>
-              <li>Create email template with <code className="bg-rose-50 px-1 rounded">{'{{to_email}}'}</code> → copy <strong>Template ID</strong></li>
-              <li>Account → API Keys → copy <strong>Public Key</strong></li>
-            </ol>
+            <p className="text-[11px] text-slate-600 my-3">
+              Emails are sent <strong>silently in the background</strong> — no Gmail login required. ✅
+            </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              <div className="sm:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Your Gmail (receives booking)</label>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Your Gmail (receives her booking)
+                </label>
                 <input
                   type="email"
                   value={emailConfig.targetEmail}
@@ -475,32 +426,14 @@ export default function App() {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Public Key</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">
+                  Web3Forms Access Key
+                </label>
                 <input
                   type="text"
-                  value={emailConfig.publicKey}
-                  onChange={(e) => setEmailConfig({ ...emailConfig, publicKey: e.target.value })}
-                  placeholder="AbC123XyZ"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Service ID</label>
-                <input
-                  type="text"
-                  value={emailConfig.serviceId}
-                  onChange={(e) => setEmailConfig({ ...emailConfig, serviceId: e.target.value })}
-                  placeholder="service_xxx"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Template ID</label>
-                <input
-                  type="text"
-                  value={emailConfig.templateId}
-                  onChange={(e) => setEmailConfig({ ...emailConfig, templateId: e.target.value })}
-                  placeholder="template_xxx"
+                  value={emailConfig.accessKey}
+                  onChange={(e) => setEmailConfig({ ...emailConfig, accessKey: e.target.value })}
+                  placeholder="a1b2c3d4-..."
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
                 />
               </div>
@@ -508,7 +441,7 @@ export default function App() {
 
             <div className="mt-4 pt-3 border-t border-rose-100 flex justify-between items-center gap-2">
               <span className="text-[10px] text-rose-500 italic flex-1">
-                *Config saved in browser only.
+                *Get a free key at web3forms.com
               </span>
               <button
                 onClick={() => setShowConfigModal(false)}
@@ -529,7 +462,7 @@ export default function App() {
               <Sparkles className="w-4 h-4 text-rose-500 animate-spin" />
               <span>Official Boyfriend Proposal Notice</span>
             </div>
-            <h1 className="text-2xl xs:text-3xl sm:text-5xl font-black text-rose-600 tracking-tight mb-2">
+            <h1 className="text-2xl sm:text-5xl font-black text-rose-600 tracking-tight mb-2">
               I Love You Darling! ❤️
             </h1>
             <div className="relative my-5 sm:my-6 mx-auto max-w-sm rounded-3xl overflow-hidden shadow-lg border-2 border-rose-200 group">
@@ -549,7 +482,7 @@ export default function App() {
               </div>
             </div>
             <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/80 mb-6 sm:mb-8">
-              <p className="text-base xs:text-lg sm:text-2xl font-extrabold text-slate-800">
+              <p className="text-base sm:text-2xl font-extrabold text-slate-800">
                 Will you go on a date with me tomorrow? 🥺👉👈
               </p>
               <p className="text-[10px] sm:text-sm text-rose-500 font-medium mt-1">
@@ -563,7 +496,7 @@ export default function App() {
                   transform: `scale(${1 + Math.min(noCount * 0.1, 0.35)})`,
                   transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                 }}
-                className="w-full sm:w-auto px-5 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 text-white font-extrabold text-sm xs:text-base sm:text-xl rounded-2xl shadow-xl shadow-rose-300 flex items-center justify-center gap-2 sm:gap-3 z-10 active:scale-95"
+                className="w-full sm:w-auto px-5 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 text-white font-extrabold text-sm sm:text-xl rounded-2xl shadow-xl shadow-rose-300 flex items-center justify-center gap-2 sm:gap-3 z-10 active:scale-95"
               >
                 <Heart className="w-5 h-5 sm:w-6 sm:h-6 fill-white animate-bounce" />
                 <span>YES! A MILLION TIMES YES! 💖</span>
@@ -576,7 +509,7 @@ export default function App() {
                     transform: `translate(${noPos.x}px, ${noPos.y}px) scale(${Math.max(1 - noCount * 0.09, 0.5)})`,
                     transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   }}
-                  className="w-full sm:w-auto px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-100 text-slate-600 font-bold text-[11px] xs:text-xs sm:text-base rounded-2xl border border-slate-300 active:bg-slate-200"
+                  className="w-full sm:w-auto px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-100 text-slate-600 font-bold text-[11px] sm:text-base rounded-2xl border border-slate-300 active:bg-slate-200"
                 >
                   {noExcuses[Math.min(noCount, noExcuses.length - 1)]}
                 </button>
@@ -597,15 +530,15 @@ export default function App() {
               <span className="text-[10px] font-bold text-rose-600 uppercase bg-rose-50 px-3 py-1.5 rounded-full border border-rose-200 inline-block">
                 🎉 Let's Customize Your Night 🥂
               </span>
-              <h2 className="text-lg xs:text-xl sm:text-3xl font-extrabold text-slate-800 mt-3">
+              <h2 className="text-lg sm:text-3xl font-extrabold text-slate-800 mt-3">
                 Date Night Menu & Activities 💖
               </h2>
             </div>
 
-            {/* ✅ HER EMAIL — Auto-ask */}
+            {/* ✅ HER EMAIL */}
             <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-pink-50 to-rose-50 border-2 border-rose-300 shadow-sm">
               <label className="block text-[11px] sm:text-xs font-bold text-rose-700 uppercase mb-1.5 flex items-center gap-1.5">
-                <AtSign className="w-4 h-4 text-rose-500" /> Your Email (for confirmation copy) 💌
+                <AtSign className="w-4 h-4 text-rose-500" /> Your Email (for confirmation) 💌
               </label>
               <input
                 type="email"
@@ -618,7 +551,7 @@ export default function App() {
                 className="w-full px-3.5 py-3 rounded-xl border-2 border-rose-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
               />
               <p className="text-[10px] text-rose-500 italic mt-1.5">
-                We'll send a confirmation to you + notify your boyfriend instantly 💕
+                Sends a copy to you + notifies your boyfriend instantly 💕
               </p>
             </div>
 
@@ -628,7 +561,7 @@ export default function App() {
                 <Utensils className="w-5 h-5 text-rose-500 flex-shrink-0" />
                 <h3 className="text-sm sm:text-lg font-bold">1. Tomorrow's Food:</h3>
               </div>
-              <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2.5 sm:gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                 {[
                   { key: 'dinner', emoji: '🍽️🍷', title: 'Grand Dinner', desc: 'Romantic candlelight, full courses.' },
                   { key: 'snacks', emoji: '🍿🍕', title: 'Snacks & Cuddles', desc: 'Street food, nachos, boba.' },
@@ -823,13 +756,13 @@ export default function App() {
                 className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 text-white font-extrabold text-sm sm:text-lg rounded-2xl shadow-xl shadow-rose-200 flex items-center justify-center gap-2 sm:gap-3 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSending ? (
-                  <><RefreshCw className="w-5 h-5 spin" /><span>Sending...</span></>
+                  <><RefreshCw className="w-5 h-5 spin" /><span>Sending silently...</span></>
                 ) : (
                   <><PartyPopper className="w-5 h-5" /><span>Complete Booking & Send! 🚀💖</span></>
                 )}
               </button>
               <p className="text-[10px] text-center text-rose-500 mt-2 italic">
-                Sends to your boyfriend + a copy to you 📩
+                🔒 Sent silently — no login, no popup
               </p>
             </div>
           </form>
@@ -845,7 +778,7 @@ export default function App() {
               <span className="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">
                 Booking Confirmed!
               </span>
-              <h2 className="text-lg xs:text-xl sm:text-4xl font-black text-slate-800 mt-2 leading-tight">
+              <h2 className="text-lg sm:text-4xl font-black text-slate-800 mt-2 leading-tight">
                 Your Boyfriend is Preparing Everything! 🌹❤️
               </h2>
             </div>
@@ -887,14 +820,6 @@ export default function App() {
 
             {/* Actions */}
             <div className="space-y-2 max-w-md mx-auto pt-2">
-              <button
-                type="button"
-                onClick={openDirectGmail}
-                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-[0.98]"
-              >
-                <Mail className="w-4 h-4" />
-                <span className="truncate">Open Gmail Backup</span>
-              </button>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -926,7 +851,7 @@ export default function App() {
       </main>
 
       <footer className="text-center py-5 sm:py-6 text-[10px] sm:text-xs text-rose-500/80 relative z-10 font-medium px-4">
-        <p>Built with all my love • Sends to {emailConfig.targetEmail} 🥰🌹</p>
+        <p>Built with all my love • Silent send to {emailConfig.targetEmail} 🥰🌹</p>
       </footer>
     </div>
   );
