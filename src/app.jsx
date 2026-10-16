@@ -6,7 +6,7 @@ import {
   Volume2, VolumeX, Plus,
   Shirt, MessageCircleHeart,
   PartyPopper, Flame, Settings,
-  X, RefreshCw
+  X, RefreshCw, AtSign
 } from 'lucide-react';
 
 export default function App() {
@@ -15,13 +15,16 @@ export default function App() {
   const [noCount, setNoCount] = useState(0);
   const [noPos, setNoPos] = useState({ x: 0, y: 0 });
 
-
+  // ✅ Email config from .env — YOUR Gmail is the target
   const [emailConfig, setEmailConfig] = useState({
-  serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || '',
-  templateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || '',
-  publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || '',
-  targetEmail: import.meta.env.VITE_EMAILJS_TARGET_EMAIL || 's81547984@gmail.com',
-});
+    serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_rko4ps5',
+    templateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_omgatnt',
+    publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'NX-Wsvy5mHjV8QoL6',
+    targetEmail: import.meta.env.VITE_MY_EMAIL || 's81547984@gmail.com',
+  });
+
+  // ✅ HER email — asked in the booking form
+  const [herEmail, setHerEmail] = useState('');
 
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -70,7 +73,7 @@ export default function App() {
     bgRef.current.innerHTML = html;
   }, []);
 
-  // Sound
+  // Sound effects
   const playTone = (type = 'click') => {
     if (!soundEnabled) return;
     try {
@@ -108,31 +111,18 @@ export default function App() {
     } catch { /* ignore */ }
   };
 
-  // Confetti via canvas-confetti
+  // Confetti
   const triggerConfetti = () => {
     confetti({
       particleCount: 150,
       spread: 90,
       origin: { y: 0.6 },
       colors: ['#f43f5e', '#ec4899', '#fb7185', '#fda4af', '#fecdd3'],
-      emojis: ['💖', '🎉', '✨', '🌹', '👑'],
       scalar: 1.2,
     });
     setTimeout(() => {
-      confetti({
-        particleCount: 80,
-        angle: 60,
-        spread: 60,
-        origin: { x: 0 },
-        colors: ['#f43f5e', '#ec4899'],
-      });
-      confetti({
-        particleCount: 80,
-        angle: 120,
-        spread: 60,
-        origin: { x: 1 },
-        colors: ['#fb7185', '#fda4af'],
-      });
+      confetti({ particleCount: 80, angle: 60, spread: 60, origin: { x: 0 }, colors: ['#f43f5e', '#ec4899'] });
+      confetti({ particleCount: 80, angle: 120, spread: 60, origin: { x: 1 }, colors: ['#fb7185', '#fda4af'] });
     }, 250);
   };
 
@@ -153,8 +143,8 @@ export default function App() {
     playTone('dodge');
     setNoCount((prev) => prev + 1);
     setNoPos({
-      x: (Math.random() - 0.5) * 280,
-      y: (Math.random() - 0.5) * 180,
+      x: (Math.random() - 0.5) * 200,
+      y: (Math.random() - 0.5) * 120,
     });
   };
 
@@ -203,7 +193,9 @@ export default function App() {
     return `💖 OFFICIAL DATE NIGHT BOOKING CONFIRMATION 💖\n` +
       `==========================================\n` +
       `TO: My Handsome Boyfriend 🤴❤️\n` +
-      `FROM: Your Darling 👸✨\n\n` +
+      `FROM: Your Darling 👸✨\n` +
+      (herEmail ? `📧 DARLING'S EMAIL: ${herEmail}\n` : '') +
+      `\n` +
       `📅 DATE: Tomorrow Night!\n` +
       `⏰ TIME SLOT: ${timeSlot}\n` +
       `👗 DRESS CODE: ${dressCode}\n` +
@@ -218,41 +210,65 @@ export default function App() {
       `Status: Confirmed, Non-Refundable & Awaiting Romance! 🥰💋`;
   };
 
-  // Submit — auto-send to Gmail
+  // Auto-reply message she receives
+  const getAutoReplyData = () => {
+    const selectedActs = activities
+      .filter((a) => a.checked)
+      .map((a) => `• ${a.emoji} ${a.title}`)
+      .join('\n');
+
+    const foodTitle =
+      foodPlan === 'dinner' ? 'Grand Dinner Feast 🍽️🍷' :
+      foodPlan === 'snacks' ? 'Snacks & Cuddle Feast 🍿🍕' :
+      'Both! The Royal Dinner + Snacks & Dessert Combo 👑😋';
+
+    return `💖 YOUR DATE NIGHT BOOKING IS CONFIRMED! 💖\n` +
+      `==========================================\n` +
+      `Hi Beautiful! 🌹\n\n` +
+      `Your handsome boyfriend received your booking and is already preparing everything! 🥰\n\n` +
+      `Here's a copy of everything you picked:\n\n` +
+      `📅 DATE: Tomorrow Night!\n` +
+      `⏰ TIME: ${timeSlot}\n` +
+      `👗 DRESS CODE: ${dressCode}\n` +
+      `🔥 EXCITEMENT LEVEL: ${excitement.toLocaleString()}% ❤️‍🔥\n\n` +
+      `🍽️ FOOD PLAN:\n` +
+      `Choice: ${foodTitle}\n` +
+      `Cravings: ${cravings.length ? cravings.join(', ') : 'Surprise me!'}\n` +
+      (foodNotes ? `Special Request: "${foodNotes}"\n\n` : `\n`) +
+      `✨ SELECTED ACTIVITIES:\n${selectedActs || '• Endless Cuddles & Kisses'}\n\n` +
+      (secretNote ? `💌 YOUR SECRET NOTE:\n"${secretNote}"\n\n` : '') +
+      `==========================================\n` +
+      `Get ready, my love — it's going to be magical! 💋\n` +
+      `— Your Boyfriend 🤴❤️`;
+  };
+
+  // ✅ MAIN SUBMIT — sends to BOTH you and her
   const handleBookingSubmit = async (e) => {
     e.preventDefault();
     playTone('yes');
-    setIsSending(true);
-    setEmailStatusMsg('');
 
-    const formattedMessage = getCompiledLoveData();
-    const isConfigured =
-      emailConfig.serviceId && emailConfig.templateId && emailConfig.publicKey;
-
-    // No keys → auto-open Gmail
-    if (!isConfigured) {
-      const subject = encodeURIComponent('💖 Date Night Booking from Your Darling! 💌');
-      const body = encodeURIComponent(formattedMessage);
-      const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailConfig.targetEmail)}&su=${subject}&body=${body}`;
-      window.open(gmailUrl, '_blank');
-
-      setTimeout(() => {
-        setIsSending(false);
-        triggerConfetti();
-        setStage('confirmed');
-        setEmailStatusMsg(`📬 Gmail opened to send your booking to ${emailConfig.targetEmail}!`);
-      }, 600);
+    // Validate her email
+    if (!herEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(herEmail)) {
+      setEmailStatusMsg('⚠️ Please enter a valid email so I can send you a confirmation 💌');
       return;
     }
 
-    // EmailJS
-    const emailData = {
+    setIsSending(true);
+    setEmailStatusMsg('');
+
+    const summaryForMe = getCompiledLoveData();
+    const summaryForHer = getAutoReplyData();
+
+    // 1️⃣ Send to YOUR Gmail (the booking notification)
+    const emailDataToMe = {
       service_id: emailConfig.serviceId,
       template_id: emailConfig.templateId,
       user_id: emailConfig.publicKey,
       template_params: {
         to_email: emailConfig.targetEmail,
-        lover_name: 'Darling ',
+        reply_to: herEmail,
+        lover_name: 'Darling 👸',
+        her_email: herEmail,
         date_time: timeSlot,
         dress_code: dressCode,
         food_plan: foodPlan,
@@ -260,26 +276,62 @@ export default function App() {
         activities: activities.filter((a) => a.checked).map((a) => `${a.emoji} ${a.title}`).join(', '),
         excitement_level: `${excitement.toLocaleString()}%`,
         secret_note: secretNote || 'None! Just bring yourself and hugs 💕',
-        full_summary: formattedMessage,
-        message: formattedMessage,
+        full_summary: summaryForMe,
+        message: summaryForMe,
+      },
+    };
+
+    // 2️⃣ Send auto-reply to HER email
+    const emailDataToHer = {
+      service_id: emailConfig.serviceId,
+      template_id: emailConfig.templateId,
+      user_id: emailConfig.publicKey,
+      template_params: {
+        to_email: herEmail,
+        reply_to: emailConfig.targetEmail,
+        lover_name: 'Your Boyfriend 🤴',
+        her_email: herEmail,
+        date_time: timeSlot,
+        dress_code: dressCode,
+        food_plan: foodPlan,
+        cravings: cravings.join(', '),
+        activities: activities.filter((a) => a.checked).map((a) => `${a.emoji} ${a.title}`).join(', '),
+        excitement_level: `${excitement.toLocaleString()}%`,
+        secret_note: secretNote || 'None! Just bring yourself and hugs 💕',
+        full_summary: summaryForHer,
+        message: summaryForHer,
       },
     };
 
     try {
-      const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailData),
-      });
+      // Send both in parallel
+      const [resMe, resHer] = await Promise.all([
+        fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(emailDataToMe),
+        }),
+        fetch('https://api.emailjs.com/api/v1.0/email/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(emailDataToHer),
+        }),
+      ]);
 
-      if (res.ok) {
+      if (resMe.ok && resHer.ok) {
         setIsSending(false);
         triggerConfetti();
         setStage('confirmed');
-        setEmailStatusMsg(`✅ Booking email delivered to ${emailConfig.targetEmail}! 💌`);
+        setEmailStatusMsg(`✅ Booking sent to ${emailConfig.targetEmail} & auto-reply sent to ${herEmail}! 💌`);
+      } else if (resMe.ok) {
+        setIsSending(false);
+        triggerConfetti();
+        setStage('confirmed');
+        setEmailStatusMsg(`✅ Booking sent to ${emailConfig.targetEmail}! Auto-reply to ${herEmail} may have failed.`);
       } else {
+        // Fallback — open Gmail with the summary
         const subject = encodeURIComponent('💖 Date Night Booking from Your Darling! 💌');
-        const body = encodeURIComponent(formattedMessage);
+        const body = encodeURIComponent(summaryForMe);
         window.open(
           `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailConfig.targetEmail)}&su=${subject}&body=${body}`,
           '_blank'
@@ -287,12 +339,12 @@ export default function App() {
         setIsSending(false);
         triggerConfetti();
         setStage('confirmed');
-        setEmailStatusMsg(`⚠️ EmailJS failed — Gmail opened instead for ${emailConfig.targetEmail}`);
+        setEmailStatusMsg(`⚠️ EmailJS failed — Gmail opened as backup. Please send manually!`);
       }
     } catch (err) {
       console.error(err);
       const subject = encodeURIComponent('💖 Date Night Booking from Your Darling! 💌');
-      const body = encodeURIComponent(formattedMessage);
+      const body = encodeURIComponent(summaryForMe);
       window.open(
         `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(emailConfig.targetEmail)}&su=${subject}&body=${body}`,
         '_blank'
@@ -300,7 +352,7 @@ export default function App() {
       setIsSending(false);
       triggerConfetti();
       setStage('confirmed');
-      setEmailStatusMsg(`⚠️ Network issue — Gmail opened instead for ${emailConfig.targetEmail}`);
+      setEmailStatusMsg(`⚠️ Network error — Gmail opened as backup.`);
     }
   };
 
@@ -345,39 +397,45 @@ export default function App() {
 
   return (
     <div
-      className="min-h-screen text-slate-800 font-sans selection:bg-rose-200 relative overflow-x-hidden"
-      style={{ background: 'linear-gradient(135deg, #ffe4e6 0%, #fce7f3 50%, #f3e8ff 100%)' }}
+      className="min-h-screen text-slate-800 relative overflow-x-hidden"
+      style={{
+        background: 'linear-gradient(135deg, #ffe4e6 0%, #fce7f3 50%, #f3e8ff 100%)',
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
     >
       <div ref={bgRef} className="fixed inset-0 pointer-events-none z-0 overflow-hidden opacity-40" />
 
       {/* HEADER */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-rose-200/60 shadow-sm">
-        <div className="max-w-2xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md">
-              <Heart className="w-5 h-5 fill-white animate-pulse" />
+      <header className="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-rose-200/60 shadow-sm">
+        <div className="max-w-2xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 flex-shrink-0 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-md">
+              <Heart className="w-4 h-4 sm:w-5 sm:h-5 fill-white animate-pulse" />
             </div>
-            <div>
-              <h1 className="text-sm sm:text-lg font-bold text-rose-600 leading-tight">
+            <div className="min-w-0">
+              <h1 className="text-xs sm:text-base font-bold text-rose-600 leading-tight truncate">
                 Darling's VIP Date Portal 💕
               </h1>
-              <p className="text-[10px] sm:text-[11px] text-rose-400 font-medium">
-                Tomorrow Night • Strictly VIP & Romantic
+              <p className="text-[9px] sm:text-[11px] text-rose-400 font-medium truncate">
+                Tomorrow Night • VIP & Romantic
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={() => setSoundEnabled(!soundEnabled)}
-              className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 border border-rose-200/60"
+              className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 active:bg-rose-100 border border-rose-200/60"
+              aria-label="Toggle sound"
             >
               {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4 text-slate-400" />}
             </button>
             <button
               onClick={() => setShowConfigModal(!showConfigModal)}
-              className="px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 flex items-center gap-1.5"
+              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 flex items-center gap-1.5"
+              aria-label="Email settings"
             >
-              <Settings className="w-3.5 h-3.5" />
+              <Settings className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
               <span className="hidden sm:inline">Email</span>
             </button>
           </div>
@@ -386,33 +444,34 @@ export default function App() {
 
       {/* EMAIL CONFIG MODAL */}
       {showConfigModal && (
-        <div className="max-w-2xl mx-auto px-3 sm:px-4 mt-3 z-40 relative">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-4 sm:p-5 border-2 border-rose-300 shadow-xl text-xs sm:text-sm">
+        <div className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm p-3 sm:p-4 flex items-start justify-center overflow-y-auto pt-16 sm:pt-24">
+          <div className="bg-white rounded-2xl p-4 sm:p-5 border-2 border-rose-300 shadow-2xl text-xs sm:text-sm w-full max-w-lg">
             <div className="flex items-center justify-between pb-3 border-b border-rose-100">
               <div className="flex items-center gap-2 font-bold text-rose-700">
                 <Mail className="w-5 h-5 text-rose-500" />
-                <span>EmailJS Setup (Auto-send to {emailConfig.targetEmail})</span>
+                <span className="text-sm">EmailJS Setup</span>
               </div>
-              <button onClick={() => setShowConfigModal(false)} className="p-1 text-slate-400">
-                <X className="w-4 h-4" />
+              <button onClick={() => setShowConfigModal(false)} className="p-1 text-slate-400 hover:text-slate-600">
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <ol className="list-decimal pl-5 space-y-1 my-3 text-slate-600 text-xs">
+            <ol className="list-decimal pl-5 space-y-1 my-3 text-slate-600 text-[11px] sm:text-xs">
               <li>Sign up free at <a href="https://www.emailjs.com" target="_blank" rel="noreferrer" className="text-rose-600 font-bold underline">EmailJS.com</a></li>
               <li>Add Gmail service → copy <strong>Service ID</strong></li>
-              <li>Create email template → copy <strong>Template ID</strong></li>
+              <li>Create email template with <code className="bg-rose-50 px-1 rounded">{'{{to_email}}'}</code> → copy <strong>Template ID</strong></li>
               <li>Account → API Keys → copy <strong>Public Key</strong></li>
             </ol>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Destination Gmail</label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="sm:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Your Gmail (receives booking)</label>
                 <input
                   type="email"
                   value={emailConfig.targetEmail}
                   onChange={(e) => setEmailConfig({ ...emailConfig, targetEmail: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-slate-50"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50"
+                  inputMode="email"
                 />
               </div>
               <div>
@@ -422,7 +481,7 @@ export default function App() {
                   value={emailConfig.publicKey}
                   onChange={(e) => setEmailConfig({ ...emailConfig, publicKey: e.target.value })}
                   placeholder="AbC123XyZ"
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
                 />
               </div>
               <div>
@@ -432,48 +491,48 @@ export default function App() {
                   value={emailConfig.serviceId}
                   onChange={(e) => setEmailConfig({ ...emailConfig, serviceId: e.target.value })}
                   placeholder="service_xxx"
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
                 />
               </div>
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Template ID</label>
                 <input
                   type="text"
                   value={emailConfig.templateId}
                   onChange={(e) => setEmailConfig({ ...emailConfig, templateId: e.target.value })}
                   placeholder="template_xxx"
-                  className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 font-mono"
                 />
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-rose-100 flex justify-between items-center">
-              <span className="text-[10px] text-rose-500 italic">
-                *No keys? We'll auto-open Gmail instead.
+            <div className="mt-4 pt-3 border-t border-rose-100 flex justify-between items-center gap-2">
+              <span className="text-[10px] text-rose-500 italic flex-1">
+                *Config saved in browser only.
               </span>
               <button
                 onClick={() => setShowConfigModal(false)}
-                className="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold"
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold active:scale-95"
               >
-                Save & Close
+                Save
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-6 sm:py-8 relative z-10">
-        {/* STAGE 1 */}
+      <main className="max-w-2xl mx-auto px-3 sm:px-4 py-5 sm:py-8 relative z-10">
+        {/* STAGE 1: QUESTION */}
         {stage === 'question' && (
           <div className="bg-white/90 backdrop-blur-md rounded-3xl p-5 sm:p-10 shadow-2xl border border-rose-200/80 text-center">
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-100 text-rose-600 text-[10px] sm:text-sm font-semibold mb-4">
               <Sparkles className="w-4 h-4 text-rose-500 animate-spin" />
               <span>Official Boyfriend Proposal Notice</span>
             </div>
-            <h1 className="text-3xl sm:text-5xl font-black text-rose-600 tracking-tight mb-2">
+            <h1 className="text-2xl xs:text-3xl sm:text-5xl font-black text-rose-600 tracking-tight mb-2">
               I Love You Darling! ❤️
             </h1>
-            <div className="relative my-6 mx-auto max-w-sm rounded-3xl overflow-hidden shadow-lg border-2 border-rose-200 group">
+            <div className="relative my-5 sm:my-6 mx-auto max-w-sm rounded-3xl overflow-hidden shadow-lg border-2 border-rose-200 group">
               <img
                 src="https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=800&q=80"
                 alt="Romantic"
@@ -481,7 +540,7 @@ export default function App() {
                   e.currentTarget.onerror = null;
                   e.currentTarget.src = 'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?auto=format&fit=crop&w=800&q=80';
                 }}
-                className="w-full h-56 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-48 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent flex items-end justify-center pb-3">
                 <span className="text-white text-[10px] sm:text-sm font-medium px-3 py-1 bg-black/40 backdrop-blur-sm rounded-full">
@@ -489,21 +548,24 @@ export default function App() {
                 </span>
               </div>
             </div>
-            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/80 mb-8">
-              <p className="text-lg sm:text-2xl font-extrabold text-slate-800">
+            <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/80 mb-6 sm:mb-8">
+              <p className="text-base xs:text-lg sm:text-2xl font-extrabold text-slate-800">
                 Will you go on a date with me tomorrow? 🥺👉👈
               </p>
               <p className="text-[10px] sm:text-sm text-rose-500 font-medium mt-1">
                 (Pick carefully... one button gives unlimited hugs and food!)
               </p>
             </div>
-            <div className="relative min-h-[170px] flex flex-col sm:flex-row items-center justify-center gap-4 py-2">
+            <div className="relative min-h-[160px] sm:min-h-[170px] flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 py-2">
               <button
                 onClick={() => { playTone('yes'); triggerConfetti(); setStage('booking'); }}
-                style={{ transform: `scale(${1 + Math.min(noCount * 0.1, 0.45)})`, transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)' }}
-                className="w-full sm:w-auto px-6 py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 text-white font-extrabold text-base sm:text-xl rounded-2xl shadow-xl flex items-center justify-center gap-3 z-10 cursor-pointer active:scale-95"
+                style={{
+                  transform: `scale(${1 + Math.min(noCount * 0.1, 0.35)})`,
+                  transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                }}
+                className="w-full sm:w-auto px-5 sm:px-8 py-3.5 sm:py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 text-white font-extrabold text-sm xs:text-base sm:text-xl rounded-2xl shadow-xl shadow-rose-300 flex items-center justify-center gap-2 sm:gap-3 z-10 active:scale-95"
               >
-                <Heart className="w-6 h-6 fill-white animate-bounce" />
+                <Heart className="w-5 h-5 sm:w-6 sm:h-6 fill-white animate-bounce" />
                 <span>YES! A MILLION TIMES YES! 💖</span>
               </button>
               {noCount < 9 && (
@@ -511,10 +573,10 @@ export default function App() {
                   onMouseEnter={handleNoDodge}
                   onClick={handleNoDodge}
                   style={{
-                    transform: `translate(${noPos.x}px, ${noPos.y}px) scale(${Math.max(1 - noCount * 0.09, 0.45)})`,
+                    transform: `translate(${noPos.x}px, ${noPos.y}px) scale(${Math.max(1 - noCount * 0.09, 0.5)})`,
                     transition: 'transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
                   }}
-                  className="w-full sm:w-auto px-5 py-4 bg-slate-100 text-slate-600 font-bold text-xs sm:text-base rounded-2xl border border-slate-300 cursor-pointer"
+                  className="w-full sm:w-auto px-4 sm:px-6 py-3.5 sm:py-4 bg-slate-100 text-slate-600 font-bold text-[11px] xs:text-xs sm:text-base rounded-2xl border border-slate-300 active:bg-slate-200"
                 >
                   {noExcuses[Math.min(noCount, noExcuses.length - 1)]}
                 </button>
@@ -528,51 +590,71 @@ export default function App() {
           </div>
         )}
 
-        {/* STAGE 2 */}
+        {/* STAGE 2: BOOKING */}
         {stage === 'booking' && (
-          <form onSubmit={handleBookingSubmit} className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-9 shadow-2xl border border-rose-200/80 space-y-7">
-            <div className="text-center border-b border-rose-100 pb-5">
-              <span className="text-[10px] font-bold text-rose-600 uppercase bg-rose-50 px-3 py-1.5 rounded-full border border-rose-200">
-                🎉 Date Night Confirmed! Now Let's Customize It 🥂
+          <form onSubmit={handleBookingSubmit} className="bg-white/95 backdrop-blur-md rounded-3xl p-4 sm:p-9 shadow-2xl border border-rose-200/80 space-y-6 sm:space-y-7">
+            <div className="text-center border-b border-rose-100 pb-4 sm:pb-5">
+              <span className="text-[10px] font-bold text-rose-600 uppercase bg-rose-50 px-3 py-1.5 rounded-full border border-rose-200 inline-block">
+                🎉 Let's Customize Your Night 🥂
               </span>
-              <h2 className="text-xl sm:text-3xl font-extrabold text-slate-800 mt-3">
-                Your Date Night Menu & Activities 💖
+              <h2 className="text-lg xs:text-xl sm:text-3xl font-extrabold text-slate-800 mt-3">
+                Date Night Menu & Activities 💖
               </h2>
+            </div>
+
+            {/* ✅ HER EMAIL — Auto-ask */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-pink-50 to-rose-50 border-2 border-rose-300 shadow-sm">
+              <label className="block text-[11px] sm:text-xs font-bold text-rose-700 uppercase mb-1.5 flex items-center gap-1.5">
+                <AtSign className="w-4 h-4 text-rose-500" /> Your Email (for confirmation copy) 💌
+              </label>
+              <input
+                type="email"
+                required
+                value={herEmail}
+                onChange={(e) => setHerEmail(e.target.value)}
+                placeholder="you@example.com"
+                inputMode="email"
+                autoComplete="email"
+                className="w-full px-3.5 py-3 rounded-xl border-2 border-rose-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-rose-400 focus:border-rose-400"
+              />
+              <p className="text-[10px] text-rose-500 italic mt-1.5">
+                We'll send a confirmation to you + notify your boyfriend instantly 💕
+              </p>
             </div>
 
             {/* Food */}
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <Utensils className="w-5 h-5 text-rose-500" />
+                <Utensils className="w-5 h-5 text-rose-500 flex-shrink-0" />
                 <h3 className="text-sm sm:text-lg font-bold">1. Tomorrow's Food:</h3>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 gap-2.5 sm:gap-3">
                 {[
-                  { key: 'dinner', emoji: '🍽️🍷', title: 'Grand Dinner', desc: 'Romantic candlelight, full courses, music.' },
-                  { key: 'snacks', emoji: '🍿🍕', title: 'Snacks & Cuddles', desc: 'Street food, nachos, fries, boba.' },
-                  { key: 'both', emoji: '👑😋', title: 'Both! (Queen)', desc: 'Big dinner + dessert runs + munchies.' },
+                  { key: 'dinner', emoji: '🍽️🍷', title: 'Grand Dinner', desc: 'Romantic candlelight, full courses.' },
+                  { key: 'snacks', emoji: '🍿🍕', title: 'Snacks & Cuddles', desc: 'Street food, nachos, boba.' },
+                  { key: 'both', emoji: '👑😋', title: 'Both! (Queen)', desc: 'Dinner + dessert + munchies.' },
                 ].map((f) => (
                   <div
                     key={f.key}
                     onClick={() => { playTone('click'); setFoodPlan(f.key); }}
-                    className={`p-4 rounded-2xl border-2 cursor-pointer ${foodPlan === f.key ? 'border-rose-500 bg-rose-50/70 ring-2 ring-rose-200' : 'border-slate-200 bg-white'}`}
+                    className={`p-3 sm:p-4 rounded-2xl border-2 cursor-pointer active:scale-[0.98] ${foodPlan === f.key ? 'border-rose-500 bg-rose-50/70 ring-2 ring-rose-200' : 'border-slate-200 bg-white'}`}
                   >
-                    <div className="text-3xl mb-2">{f.emoji}</div>
-                    <h4 className="font-bold text-sm">{f.title}</h4>
-                    <p className="text-[10px] text-slate-500 mt-1">{f.desc}</p>
+                    <div className="text-2xl sm:text-3xl mb-1.5">{f.emoji}</div>
+                    <h4 className="font-bold text-xs sm:text-sm">{f.title}</h4>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{f.desc}</p>
                   </div>
                 ))}
               </div>
 
               <div className="mt-4 bg-slate-50 p-3 sm:p-4 rounded-2xl border border-slate-200/80">
-                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-2">
+                <label className="block text-[10px] sm:text-xs font-bold text-slate-700 uppercase mb-2">
                   What are you craving?
                 </label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {[
-                    'Hot Steamy Biryani 🍲', 'Cheesy Gourmet Pizza 🍕', 'Spicy Momos & Dimsums 🥟',
-                    'Creamy Pasta & Garlic Bread 🍝', 'Street Food & Chaat 🌮🍢', 'Crispy Burgers & Curly Fries 🍔🍟',
-                    'Boba / Bubble Tea 🧋', 'Chocolate Ice Cream 🍨', 'Warm Waffles & Nutella 🧇🍫',
+                    'Biryani 🍲', 'Pizza 🍕', 'Momos 🥟',
+                    'Pasta 🍝', 'Chaat 🌮', 'Burgers 🍔',
+                    'Boba 🧋', 'Ice Cream 🍨', 'Waffles 🧇',
                   ].map((item) => {
                     const isSelected = cravings.includes(item);
                     return (
@@ -580,7 +662,7 @@ export default function App() {
                         key={item}
                         type="button"
                         onClick={() => toggleCraving(item)}
-                        className={`px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border flex items-center gap-1.5 ${isSelected ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-slate-700 border-slate-300'}`}
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-semibold border active:scale-95 flex items-center gap-1 ${isSelected ? 'bg-rose-500 text-white border-rose-500' : 'bg-white text-slate-700 border-slate-300'}`}
                       >
                         {isSelected && <Check className="w-3 h-3" />}
                         <span>{item}</span>
@@ -593,19 +675,19 @@ export default function App() {
                   value={foodNotes}
                   onChange={(e) => setFoodNotes(e.target.value)}
                   placeholder="Any particular spot in mind?"
-                  className="w-full mt-3 px-3 py-2 rounded-xl border border-slate-300 text-xs bg-white"
+                  className="w-full mt-3 px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
                 />
               </div>
             </div>
 
             {/* Activities */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Heart className="w-5 h-5 text-rose-500" />
-                  <h3 className="text-sm sm:text-lg font-bold">2. Love Activities 💖</h3>
+              <div className="flex items-center justify-between mb-3 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Heart className="w-5 h-5 text-rose-500 flex-shrink-0" />
+                  <h3 className="text-sm sm:text-lg font-bold truncate">2. Love Activities 💖</h3>
                 </div>
-                <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded-full">
+                <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded-full whitespace-nowrap">
                   {activities.filter((a) => a.checked).length} Selected
                 </span>
               </div>
@@ -614,31 +696,31 @@ export default function App() {
                   <div
                     key={act.id}
                     onClick={() => toggleActivity(act.id)}
-                    className={`p-3.5 rounded-2xl border-2 cursor-pointer flex items-start gap-3 ${act.checked ? 'border-rose-400 bg-rose-50/70' : 'border-slate-200 bg-white/70'}`}
+                    className={`p-3 sm:p-3.5 rounded-2xl border-2 cursor-pointer flex items-start gap-2.5 active:scale-[0.98] ${act.checked ? 'border-rose-400 bg-rose-50/70' : 'border-slate-200 bg-white/70'}`}
                   >
-                    <span className="text-2xl">{act.emoji}</span>
+                    <span className="text-xl sm:text-2xl flex-shrink-0">{act.emoji}</span>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-bold text-xs sm:text-sm truncate">{act.title}</h4>
-                        <div className={`w-4 h-4 rounded flex items-center justify-center border ${act.checked ? 'bg-rose-500 border-rose-500 text-white' : 'border-slate-300 bg-white'}`}>
+                      <div className="flex items-start justify-between gap-1">
+                        <h4 className="font-bold text-xs sm:text-sm leading-tight">{act.title}</h4>
+                        <div className={`w-4 h-4 flex-shrink-0 rounded flex items-center justify-center border mt-0.5 ${act.checked ? 'bg-rose-500 border-rose-500 text-white' : 'border-slate-300 bg-white'}`}>
                           {act.checked && <Check className="w-3 h-3" />}
                         </div>
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{act.desc}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5 leading-snug">{act.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-3 p-3.5 rounded-2xl bg-gradient-to-r from-pink-50 to-rose-50 border border-rose-200">
-                <p className="text-[10px] font-bold text-rose-700 mb-2 flex items-center gap-1.5">
+              <div className="mt-3 p-3 sm:p-3.5 rounded-2xl bg-gradient-to-r from-pink-50 to-rose-50 border border-rose-200">
+                <p className="text-[10px] sm:text-xs font-bold text-rose-700 mb-2 flex items-center gap-1.5">
                   <Plus className="w-3.5 h-3.5" /> Add Custom Activity:
                 </p>
                 <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                   <select
                     value={newActivityEmoji}
                     onChange={(e) => setNewActivityEmoji(e.target.value)}
-                    className="px-2 py-2 rounded-xl border border-rose-300 bg-white text-sm"
+                    className="px-2 py-2 rounded-xl border border-rose-300 bg-white text-sm flex-shrink-0"
                   >
                     {['💖', '🧸', '🍦', '🍿', '✨', '💍', '💤', '🎮'].map((e) => (
                       <option key={e} value={e}>{e}</option>
@@ -649,12 +731,12 @@ export default function App() {
                     value={newActivityText}
                     onChange={(e) => setNewActivityText(e.target.value)}
                     placeholder="e.g. 2 AM ice cream walk..."
-                    className="flex-1 min-w-[120px] px-3 py-2 rounded-xl border border-rose-300 bg-white text-xs"
+                    className="flex-1 min-w-[100px] px-3 py-2 rounded-xl border border-rose-300 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-rose-400"
                   />
                   <button
                     type="button"
                     onClick={handleAddActivity}
-                    className="px-4 py-2 bg-rose-500 text-white font-bold text-xs rounded-xl flex items-center gap-1"
+                    className="px-3 sm:px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs rounded-xl flex items-center gap-1 active:scale-95"
                   >
                     <Plus className="w-3.5 h-3.5" /> Add
                   </button>
@@ -665,18 +747,15 @@ export default function App() {
             {/* Time & Dress */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
+                <label className="block text-[10px] sm:text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
                   <Clock className="w-4 h-4 text-rose-500" /> Preferred Time:
                 </label>
                 <div className="space-y-2">
-                  {[
-                    '6:30 PM (Golden Hour 🌅)',
-                    '7:30 PM (Candlelight ✨)',
-                  ].map((t) => (
+                  {['6:30 PM (Golden Hour 🌅)', '7:30 PM (Candlelight ✨)'].map((t) => (
                     <div
                       key={t}
                       onClick={() => { playTone('click'); setTimeSlot(t); }}
-                      className={`p-2.5 rounded-xl border text-xs cursor-pointer ${timeSlot === t ? 'border-rose-500 bg-rose-50/80 font-bold text-rose-800' : 'border-slate-200 bg-white'}`}
+                      className={`p-2.5 sm:p-3 rounded-xl border text-xs cursor-pointer active:scale-[0.98] ${timeSlot === t ? 'border-rose-500 bg-rose-50/80 font-bold text-rose-800' : 'border-slate-200 bg-white'}`}
                     >
                       {t}
                     </div>
@@ -684,19 +763,15 @@ export default function App() {
                 </div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
+                <label className="block text-[10px] sm:text-xs font-bold text-slate-700 uppercase mb-2 flex items-center gap-1.5">
                   <Shirt className="w-4 h-4 text-rose-500" /> Dress Code:
                 </label>
                 <div className="space-y-2">
-                  {[
-                    'Comfortable Cute PJs & Hoodies 🧸',
-                    'Dress to Impress / Princess Fit 👗✨',
-                    'Matching Couple Outfits 👯‍♀️💕',
-                  ].map((d) => (
+                  {['PJs & Hoodies 🧸', 'Princess Fit 👗✨', 'Matching Couple 👯‍♀️'].map((d) => (
                     <div
                       key={d}
                       onClick={() => { playTone('click'); setDressCode(d); }}
-                      className={`p-2.5 rounded-xl border text-xs cursor-pointer ${dressCode === d ? 'border-rose-500 bg-rose-50/80 font-bold text-rose-800' : 'border-slate-200 bg-white'}`}
+                      className={`p-2.5 sm:p-3 rounded-xl border text-xs cursor-pointer active:scale-[0.98] ${dressCode === d ? 'border-rose-500 bg-rose-50/80 font-bold text-rose-800' : 'border-slate-200 bg-white'}`}
                     >
                       {d}
                     </div>
@@ -707,11 +782,11 @@ export default function App() {
 
             {/* Excitement */}
             <div className="p-3 sm:p-4 rounded-2xl bg-rose-50/80 border border-rose-200">
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-2 gap-2">
                 <span className="text-xs font-bold text-rose-800 flex items-center gap-1.5">
-                  <Flame className="w-4 h-4 text-rose-500 animate-bounce" /> Excitement Level:
+                  <Flame className="w-4 h-4 text-rose-500 animate-bounce" /> Excitement:
                 </span>
-                <span className="text-sm font-black text-rose-600 font-mono">
+                <span className="text-xs sm:text-sm font-black text-rose-600 font-mono whitespace-nowrap">
                   {excitement.toLocaleString()}% ❤️‍🔥
                 </span>
               </div>
@@ -728,7 +803,7 @@ export default function App() {
 
             {/* Secret Note */}
             <div>
-              <label className="block text-[10px] font-bold text-slate-700 uppercase mb-1.5 flex items-center gap-1.5">
+              <label className="block text-[10px] sm:text-xs font-bold text-slate-700 uppercase mb-1.5 flex items-center gap-1.5">
                 <MessageCircleHeart className="w-4 h-4 text-rose-500" /> Secret Note 💌
               </label>
               <textarea
@@ -736,107 +811,112 @@ export default function App() {
                 value={secretNote}
                 onChange={(e) => setSecretNote(e.target.value)}
                 placeholder="Write any secret demands here..."
-                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white"
+                className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
               />
             </div>
 
             {/* Submit */}
-            <div className="pt-2">
+            <div className="pt-1">
               <button
                 type="submit"
                 disabled={isSending}
-                className="w-full py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 text-white font-extrabold text-sm sm:text-lg rounded-2xl shadow-xl flex items-center justify-center gap-3 cursor-pointer disabled:opacity-70"
+                className="w-full py-3.5 sm:py-4 bg-gradient-to-r from-rose-500 via-pink-500 to-red-500 text-white font-extrabold text-sm sm:text-lg rounded-2xl shadow-xl shadow-rose-200 flex items-center justify-center gap-2 sm:gap-3 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
                 {isSending ? (
-                  <><RefreshCw className="w-5 h-5 spin" /><span>Sending to {emailConfig.targetEmail}... 💌</span></>
+                  <><RefreshCw className="w-5 h-5 spin" /><span>Sending...</span></>
                 ) : (
-                  <><PartyPopper className="w-5 h-5" /><span>Complete Booking & Send to My Gmail! 🚀💖</span></>
+                  <><PartyPopper className="w-5 h-5" /><span>Complete Booking & Send! 🚀💖</span></>
                 )}
               </button>
+              <p className="text-[10px] text-center text-rose-500 mt-2 italic">
+                Sends to your boyfriend + a copy to you 📩
+              </p>
             </div>
           </form>
         )}
 
-        {/* STAGE 3 */}
+        {/* STAGE 3: CONFIRMED */}
         {stage === 'confirmed' && (
-          <div className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-10 shadow-2xl border border-rose-200 text-center space-y-5">
-            <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-lg animate-bounce">
-              <PartyPopper className="w-10 h-10" />
+          <div className="bg-white/95 backdrop-blur-md rounded-3xl p-5 sm:p-10 shadow-2xl border border-rose-200 text-center space-y-4 sm:space-y-5">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center shadow-lg animate-bounce">
+              <PartyPopper className="w-8 h-8 sm:w-10 sm:h-10" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                Official Booking Confirmed!
+              <span className="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200 inline-block">
+                Booking Confirmed!
               </span>
-              <h2 className="text-xl sm:text-4xl font-black text-slate-800 mt-2">
+              <h2 className="text-lg xs:text-xl sm:text-4xl font-black text-slate-800 mt-2 leading-tight">
                 Your Boyfriend is Preparing Everything! 🌹❤️
               </h2>
             </div>
 
             {emailStatusMsg && (
-              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-[10px] text-rose-700 flex items-center justify-center gap-2">
-                <Mail className="w-4 h-4 text-rose-500 flex-shrink-0" />
-                <span>{emailStatusMsg}</span>
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-2xl text-[10px] sm:text-xs text-rose-700 flex items-start justify-center gap-2 text-left">
+                <Mail className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5" />
+                <span className="flex-1">{emailStatusMsg}</span>
               </div>
             )}
 
-            <div className="max-w-md mx-auto bg-gradient-to-br from-rose-600 via-pink-600 to-rose-700 text-white rounded-3xl p-5 shadow-2xl relative overflow-hidden text-left">
+            {/* VIP Ticket */}
+            <div className="max-w-md mx-auto bg-gradient-to-br from-rose-600 via-pink-600 to-rose-700 text-white rounded-3xl p-4 sm:p-5 shadow-2xl relative overflow-hidden text-left">
               <div className="absolute -right-6 -bottom-6 opacity-10 pointer-events-none">
-                <Heart className="w-48 h-48 fill-white" />
+                <Heart className="w-40 h-40 sm:w-48 sm:h-48 fill-white" />
               </div>
-              <div className="flex items-center justify-between border-b border-white/20 pb-3 mb-3">
-                <div>
+              <div className="flex items-center justify-between border-b border-white/20 pb-3 mb-3 gap-2">
+                <div className="min-w-0">
                   <span className="text-[9px] uppercase font-bold tracking-widest text-rose-200 block">Boarding Pass</span>
-                  <span className="font-black text-sm">VIP DATE NIGHT TICKET</span>
+                  <span className="font-black text-xs sm:text-sm">VIP DATE NIGHT TICKET</span>
                 </div>
-                <span className="font-mono text-[10px] font-bold text-emerald-200 bg-emerald-950/40 px-2 py-0.5 rounded">
+                <span className="font-mono text-[9px] sm:text-[10px] font-bold text-emerald-200 bg-emerald-950/40 px-2 py-0.5 rounded whitespace-nowrap">
                   CONFIRMED ✅
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-3 text-xs mb-3">
-                <div><span className="text-[9px] text-rose-200 block uppercase font-bold">Queen:</span><span className="font-bold text-xs">Darling 👸💖</span></div>
-                <div><span className="text-[9px] text-rose-200 block uppercase font-bold">Boyfriend:</span><span className="font-bold text-xs">Most In Love Guy 🤴🌹</span></div>
+              <div className="grid grid-cols-2 gap-2.5 text-xs mb-3">
+                <div><span className="text-[9px] text-rose-200 block uppercase font-bold">Queen:</span><span className="font-bold text-[11px] sm:text-xs">Darling 👸</span></div>
+                <div><span className="text-[9px] text-rose-200 block uppercase font-bold">Boyfriend:</span><span className="font-bold text-[11px] sm:text-xs">Lover 🤴🌹</span></div>
                 <div><span className="text-[9px] text-rose-200 block uppercase font-bold">When:</span><span className="text-[10px]">{timeSlot.split('(')[0]}</span></div>
                 <div><span className="text-[9px] text-rose-200 block uppercase font-bold">Dress:</span><span className="text-[10px]">{dressCode.split('/')[0]}</span></div>
                 <div className="col-span-2"><span className="text-[9px] text-rose-200 block uppercase font-bold">Dinner:</span><span className="text-[10px]">{foodPlan === 'dinner' ? 'Grand Dinner 🍽️' : foodPlan === 'snacks' ? 'Snacks Feast 🍿' : 'Royal Combo 👑'}</span></div>
                 <div className="col-span-2"><span className="text-[9px] text-rose-200 block uppercase font-bold">Activities:</span><span className="text-[10px] line-clamp-2">{activities.filter((a) => a.checked).map((a) => `${a.emoji} ${a.title}`).join(', ')}</span></div>
               </div>
-              <div className="pt-2.5 border-t border-white/20 flex items-center justify-between text-[10px] text-rose-100">
+              <div className="pt-2.5 border-t border-white/20 flex items-center justify-between text-[10px] text-rose-100 gap-2 flex-wrap">
                 <span>Excitement: {excitement.toLocaleString()}% ❤️‍🔥</span>
                 <span>Payment: 100 Kisses 💋</span>
               </div>
             </div>
 
-            <div className="space-y-2.5 max-w-md mx-auto pt-2">
+            {/* Actions */}
+            <div className="space-y-2 max-w-md mx-auto pt-2">
               <button
                 type="button"
                 onClick={openDirectGmail}
-                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-[0.98]"
               >
                 <Mail className="w-4 h-4" />
-                <span>Open Gmail to Send to {emailConfig.targetEmail}</span>
+                <span className="truncate">Open Gmail Backup</span>
               </button>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={copyLoveSummary}
-                  className="py-2.5 px-3 bg-white border border-slate-300 text-slate-700 font-semibold text-[10px] rounded-xl flex items-center justify-center gap-1.5"
+                  className="py-2.5 px-3 bg-white border border-slate-300 text-slate-700 font-semibold text-[10px] sm:text-xs rounded-xl flex items-center justify-center gap-1.5 active:scale-95"
                 >
                   {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copied ? 'Copied!' : 'Copy Summary'}</span>
+                  <span className="truncate">{copied ? 'Copied!' : 'Copy'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={openNativeMail}
-                  className="py-2.5 px-3 bg-white border border-slate-300 text-slate-700 font-semibold text-[10px] rounded-xl flex items-center justify-center gap-1.5"
+                  className="py-2.5 px-3 bg-white border border-slate-300 text-slate-700 font-semibold text-[10px] sm:text-xs rounded-xl flex items-center justify-center gap-1.5 active:scale-95"
                 >
                   <Send className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Mobile Mail</span>
+                  <span className="truncate">Mobile Mail</span>
                 </button>
               </div>
               <button
                 type="button"
                 onClick={() => { playTone('click'); setStage('question'); setNoCount(0); }}
-                className="text-[10px] text-slate-400 hover:text-slate-600 font-medium py-1 flex items-center justify-center gap-1 mx-auto"
+                className="text-[10px] sm:text-xs text-slate-400 hover:text-slate-600 font-medium py-2 flex items-center justify-center gap-1 mx-auto active:scale-95"
               >
                 <RefreshCw className="w-3.5 h-3.5" /> Start Over
               </button>
@@ -845,8 +925,8 @@ export default function App() {
         )}
       </main>
 
-      <footer className="text-center py-6 text-[10px] sm:text-xs text-rose-500/80 relative z-10 font-medium">
-        <p>Built with all my love • Auto-sends to {emailConfig.targetEmail} 🥰🌹</p>
+      <footer className="text-center py-5 sm:py-6 text-[10px] sm:text-xs text-rose-500/80 relative z-10 font-medium px-4">
+        <p>Built with all my love • Sends to {emailConfig.targetEmail} 🥰🌹</p>
       </footer>
     </div>
   );
